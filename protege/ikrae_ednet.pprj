@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <entry>
+    <string>OntologyIRI</string>
+    <string>http://ikrae.org/ontology</string>
+  </entry>
+  <entry>
+    <string>ActiveOntology</string>
+    <string>ikrae_ednet.owl</string>
+  </entry>
+  <entry>
+    <string>SWRLRules</string>
+    <string>ikrae_swrl_rules.txt</string>
+  </entry>
+</project>
