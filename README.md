@@ -1,7 +1,7 @@
 ---
-title: "IKRAE-EdNet: Explainable Adaptive Learning with Real EdNet Data"
+title: "IKRAE Ednet: Explainable Adaptive Learning with Real EdNet Data"
 subtitle: "User & Reviewer Guide"
-author: "Your Name"
+author: "AZIZ ABDELKARIM"
 date: "October 27, 2025"
 geometry: margin=1in
 colorlinks: true
@@ -9,9 +9,7 @@ urlcolor: blue
 fontfamily: helvet
 ---
 
-# IKRAE-EdNet: Explainable, Scalable, and Context-Aware Adaptive Learning Path Optimization
-
-**IEEE TLT / IJAIED Submission** | **Q1 Reproducible** | **Real EdNet (131M interactions)**
+# IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning
 
 ![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12345678.svg){width=30%}  
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)  
@@ -22,9 +20,9 @@ fontfamily: helvet
 
 ## For Users (Students, Educators, Developers)
 
-### What is IKRAE-EdNet?
+### What is IKRAE?
 
-**IKRAE-EdNet** generates **personalized, explainable learning paths** using **real learner data** from [EdNet](https://github.com/riiid/ednet) (131M interactions, 784K users).  
+**IKRAE** generates **personalized, explainable learning paths** using **real learner data** from [EdNet](https://github.com/riiid/ednet) (131M interactions, 784K users).  
 It answers:  
 > *"What should this learner do next — and why?"*
 
