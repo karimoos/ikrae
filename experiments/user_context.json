@@ -1,0 +1,10 @@
+{
+  "user_id": "U_12345",
+  "language": "en",
+  "device": "mobile",
+  "bandwidth": "low",
+  "time_budget_min": 25.0,
+  "mastery_level": 0.65,
+  "platform": "android",
+  "session_start": "2025-10-27T10:00:00Z"
+}
