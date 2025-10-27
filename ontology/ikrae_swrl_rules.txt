@@ -1,0 +1,43 @@
+# === CONTEXT COMPATIBILITY (12 rules) ===
+
+# 1. Language mismatch
+LearningObject(?lo), hasLanguage(?lo, ?lang_lo), 
+User(?u), preferredLanguage(?u, ?lang_u), 
+swrlb:notEqual(?lang_lo, ?lang_u)
+→ Infeasible(?lo)
+
+# 2. Low bandwidth + video
+LearningObject(?lo), hasType(?lo, "video"), 
+Device(?d), hasBandwidth(?d, "low"), 
+User(?u), usesDevice(?u, ?d)
+→ Infeasible(?lo)
+
+# 3. Mobile + long duration (>15 min)
+LearningObject(?lo), duration(?lo, ?dur), swrlb:greaterThan(?dur, 15), 
+Device(?d), hasType(?d, "mobile"), 
+User(?u), usesDevice(?u, ?d)
+→ Infeasible(?lo)
+
+# 4. Time budget exceeded
+LearningObject(?lo), duration(?lo, ?dur), 
+Context(?c), timeBudget(?c, ?budget), 
+swrlb:greaterThan(?dur, ?budget)
+→ Infeasible(?lo)
+
+# ... (8 more similar rules)
+
+# === PEDAGOGICAL VALIDITY (12 rules) ===
+
+# 13. Prerequisite not mastered
+LearningObject(?lo), hasPrerequisite(?lo, ?pre), 
+User(?u), hasMastery(?u, ?pre, ?level), 
+swrlb:lessThan(?level, 0.7)
+→ Infeasible(?lo)
+
+# 14. Skill gap too large
+LearningObject(?lo), requiresSkillLevel(?lo, ?req), 
+User(?u), hasSkillLevel(?u, ?skill, ?curr), 
+swrlb:lessThan(?curr, ?req)
+→ Infeasible(?lo)
+
+# ... (10 more rules for scaffolding, cognitive load, etc.)
