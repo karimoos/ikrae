@@ -1,0 +1,36 @@
+@prefix : <http://ikrae.org/ontology#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# === Questions (13,169) ===
+:LO_q2319 a :Question ;
+    :duration "4.7"^^xsd:float ;
+    :pedagogicalWeight "0.82"^^xsd:float ;
+    :coversSkill "algebra" ;
+    :hasLanguage "en" .
+
+:LO_q4521 a :Question ;
+    :duration "6.1"^^xsd:float ;
+    :pedagogicalWeight "0.65"^^xsd:float ;
+    :coversSkill "fractions" ;
+    :hasPrerequisite :LO_q2319 .
+
+# === Lectures (1,021) ===
+:LO_l805 a :Lecture ;
+    :duration "12.3"^^xsd:float ;
+    :pedagogicalWeight "0.9"^^xsd:float ;
+    :coversSkill "algebra" ;
+    :hasType "video" .
+
+# === Users (sampled) ===
+:User_12345 a :User ;
+    :preferredLanguage "en" ;
+    :masteryLevel "0.68"^^xsd:float ;
+    :usesDevice :Device_mobile_low .
+
+:Device_mobile_low a :Device ;
+    :hasType "mobile" ;
+    :hasBandwidth "low" .
+
+# === Context ===
+:Context_12345 a :Context ;
+    :timeBudget "25.0"^^xsd:float .
