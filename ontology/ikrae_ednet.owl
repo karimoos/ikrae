@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<rdf:RDF
+    xmlns="http://ikrae.org/ontology#"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:swrl="http://www.w3.org/2003/11/swrl#"
+    xmlns:swrlb="http://www.w3.org/2003/11/swrlb#">
+
+  <owl:Ontology rdf:about="http://ikrae.org/ontology">
+    <owl:versionInfo>1.0.0</owl:versionInfo>
+    <rdfs:comment>IKRAE-EdNet: Adaptive Learning Ontology with EdNet Integration</rdfs:comment>
+  </owl:Ontology>
+
+  <!-- Classes -->
+  <owl:Class rdf:about="#LearningObject"/>
+  <owl:Class rdf:about="#Question">
+    <rdfs:subClassOf rdf:resource="#LearningObject"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Lecture">
+    <rdfs:subClassOf rdf:resource="#LearningObject"/>
+  </owl:Class>
+  <owl:Class rdf:about="#User"/>
+  <owl:Class rdf:about="#Device"/>
+  <owl:Class rdf:about="#Context"/>
+  <owl:Class rdf:about="#Infeasible">
+    <rdfs:comment>Marker class for SWRL filtering</rdfs:comment>
+  </owl:Class>
+
+  <!-- Object Properties -->
+  <owl:ObjectProperty rdf:about="#hasPrerequisite">
+    <rdfs:domain rdf:resource="#LearningObject"/>
+    <rdfs:range rdf:resource="#LearningObject"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="#coversSkill">
+    <rdfs:domain rdf:resource="#LearningObject"/>
+    <rdfs:range rdf:resource="#Skill"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="#usesDevice">
+    <rdfs:domain rdf:resource="#User"/>
+    <rdfs:range rdf:resource="#Device"/>
+  </owl:ObjectProperty>
+
+  <!-- Data Properties -->
+  <owl:DatatypeProperty rdf:about="#duration">
+    <rdfs:domain rdf:resource="#LearningObject"/>
+    <rdfs:range rdf:resource="&xsd;float"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#pedagogicalWeight">
+    <rdfs:domain rdf:resource="#LearningObject"/>
+    <rdfs:range rdf:resource="&xsd;float"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#preferredLanguage">
+    <rdfs:domain rdf:resource="#User"/>
+    <rdfs:range rdf:resource="&xsd;string"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#hasBandwidth">
+    <rdfs:domain rdf:resource="#Device"/>
+    <rdfs:range rdf:resource="&xsd;string"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#timeBudget">
+    <rdfs:domain rdf:resource="#Context"/>
+    <rdfs:range rdf:resource="&xsd;float"/>
+  </owl:DatatypeProperty>
+  <owl:DatatypeProperty rdf:about="#masteryLevel">
+    <rdfs:domain rdf:resource="#User"/>
+    <rdfs:range rdf:resource="&xsd;float"/>
+  </owl:DatatypeProperty>
+
+  <!-- SWRL Rules will be imported from ikrae_swrl_rules.txt -->
+
+</rdf:RDF>
