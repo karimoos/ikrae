@@ -1,6 +1,6 @@
 # IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning
 
-**Journal article under Submission** | **AZIZ ABDELKARIM** | **Real EdNet (131M interactions)**
+**A Research study  by** | **AZIZ ABDELKARIM** | **Real EdNet (131M interactions)**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12345678.svg)](https://doi.org/10.5281/zenodo.12345678)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  
