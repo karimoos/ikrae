@@ -1,0 +1,39 @@
+# Data (large EdNet CSVs)
+data/*
+data/ednet/*
+
+# Experiments (generated results)
+experiments/results/*
+!experiments/results/.gitkeep
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# JARs (except HermiT)
+lib/hermit/*.jar
+!lib/hermit/HermiT.jar
+
+# Temp
+*.tmp
+temp/
