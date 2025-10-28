@@ -52,3 +52,7 @@ docker run --rm -v $(pwd)/experiments:/app/experiments ikrae-ednet
 
 # 3. See your path!
 cat experiments/results/path_trace.json
+
+## License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
