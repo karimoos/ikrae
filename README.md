@@ -9,7 +9,7 @@
 
 ---
 
-## Reproducibility Statement (For Reviewers)
+## Reproducibility Statement
 
 > **All experiments in the paper are 100% reproducible using this repository.**  
 > **No synthetic data** — **only real EdNet-KT3** (50K sampled users, 100K+ LOs).  
