@@ -39,8 +39,6 @@ It answers:
 
 ---
 
-### Try It in 3 Minutes
-
 ```bash
 # 1. Clone
 git clone https://github.com/yourname/ikrae-ednet.git
