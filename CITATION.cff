@@ -1,10 +1,21 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-authors:
-  - family-names: "O."
-    given-names: "Karim"
-    affiliation: "Karimoos Lab, Education and Research"
-title: "IKRAE-EdNet v1.0: Scalable Adaptive Learning with Real EdNet Data"
-version: 1.0.0
+title: "IKRAE-EdNet: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning"
+version: "1.0.0"
 doi: 10.5281/zenodo.17464127
-date-released: 2025-10-28
+date-released: 2025-11-12
+authors:
+  - family-names: "Abdelkarim"
+    given-names: "Aziz"
+    orcid: "https://orcid.org/0000-0002-3900-4012"
+    affiliation: "Faculty of Sciences and Techniques of Mohammedia (FST), Hassan II University, Morocco"
+license: MIT
+repository-code: "https://github.com/karimoos/ikrae"
+keywords:
+  - adaptive learning
+  - semantic reasoning
+  - ontology
+  - explainable AI
+  - EdNet
+  - graph optimization
+
