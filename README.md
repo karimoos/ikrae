@@ -39,8 +39,6 @@ All experiments are fully reproducible using real **EdNet-KT3 data (131M interac
 ---
 
 ## 🧩 IKRAE-EdNet Pipeline Overview
-
-```markdown
 ```mermaid
 flowchart LR
     subgraph A[EdNet Dataset]
