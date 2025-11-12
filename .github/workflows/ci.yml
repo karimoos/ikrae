@@ -17,7 +17,7 @@ jobs:
       - name: Build Docker image (no cache)
         uses: docker/build-push-action@v5
         with:
-          context: ./docker
+          context: .
           file: ./docker/Dockerfile
           push: false
           tags: ikrae-ednet:ci
