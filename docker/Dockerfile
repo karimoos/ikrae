@@ -1,7 +1,11 @@
 # =========================================================
 #  IKRAE-EdNet  |  Robust GitHub-Actions-safe Dockerfile
 # =========================================================
-FROM python:3.10-slim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        openjdk-11-jre-headless \
+        git wget unzip ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 LABEL maintainer="Aziz Abdelkarim <a.karim.linux@gmail.com>"
 
