@@ -40,6 +40,7 @@ All experiments are fully reproducible using real **EdNet-KT3 data (131M interac
 
 ## 🧩 IKRAE-EdNet Pipeline Overview
 
+```markdown
 ```mermaid
 flowchart LR
     subgraph A[EdNet Dataset]
@@ -49,27 +50,27 @@ flowchart LR
     end
 
     subgraph B[Preprocessing & Sampling]
-        B1[Stratified Learner Sampling<br>(ikrae-ednet-sampling.py)]
-        B2[Feature Extraction<br>(Preprocessing.py)]
-        B3[Skill DAG Construction<br>(ednet_loader.py)]
+        B1["Stratified Learner Sampling\n(ikrae-ednet-sampling.py)"]
+        B2["Feature Extraction\n(Preprocessing.py)"]
+        B3["Skill DAG Construction\n(ednet_loader.py)"]
     end
 
     subgraph C[Semantic Reasoning Layer]
-        C1[Ontology<br>(ikrae_ednet.owl)]
-        C2[SWRL Rules<br>(ikrae_swrl_rules.txt)]
-        C3[HermiT + Py4J Bridge<br>(ikrae_reasoner.py + IKRAEReasoner.java)]
+        C1["Ontology\n(ikrae_ednet.owl)"]
+        C2["SWRL Rules\n(ikrae_swrl_rules.txt)"]
+        C3["HermiT + Py4J Bridge\n(ikrae_reasoner.py + IKRAEReasoner.java)"]
     end
 
     subgraph D[Graph-Based Optimization Layer]
-        D1[Weighted DAG Builder<br>(ikrae_optimizer.py)]
-        D2[Dijkstra + Yen’s k-Shortest Paths<br>(Adaptive Path Search)]
-        D3[Explainability Generator<br>(JSON Trace + Exclusions)]
+        D1["Weighted DAG Builder\n(ikrae_optimizer.py)"]
+        D2["Dijkstra + Yen’s k-Shortest Paths\n(Adaptive Path Search)"]
+        D3["Explainability Generator\n(JSON Trace + Exclusions)"]
     end
 
     subgraph E[Evaluation & Results]
-        E1[Runtime & Scalability<br>(run_experiments.py)]
-        E2[Visualization & Metrics<br>(scalability.png)]
-        E3[Explainable Output<br>(path_trace.json)]
+        E1["Runtime & Scalability\n(run_experiments.py)"]
+        E2["Visualization & Metrics\n(scalability.png)"]
+        E3["Explainable Output\n(path_trace.json)"]
     end
 
     A1 --> B1 --> B2 --> B3 --> C3
