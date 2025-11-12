@@ -9,14 +9,19 @@ LABEL description="Docker image for IKRAE-EdNet: Semantic + Graph-based Adaptive
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# --- Install dependencies ---
+# --- System setup ---
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         openjdk-17-jdk \
         git \
         wget \
         unzip \
-        ca-certificates && \
+        ca-certificates \
+        build-essential \
+        pkg-config \
+        libfreetype6-dev \
+        libpng-dev \
+        libjpeg-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # --- Environment variables ---
@@ -24,15 +29,13 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
 
-# --- Copy repo ---
 WORKDIR /app
 COPY . /app
 
-# --- Python dependencies ---
-RUN pip install --no-cache-dir -r requirements.txt
+# --- Install Python dependencies ---
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt
 
-# --- Quick runtime sanity check ---
 RUN java -version && python --version
 
-# --- Default command ---
 CMD ["bash", "run_pipeline.sh"]
