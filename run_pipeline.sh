@@ -1,16 +1,33 @@
 #!/bin/bash
-echo "Starting IKRAE-EdNet Pipeline..."
+echo "=== Starting IKRAE Full Pipeline ==="
 
-# 1. Load EdNet
-python src/ednet_loader.py
+# Activate environment if needed
+# source venv/bin/activate
 
-# 2. Run reasoning
-python src/ikrae_reasoner.py --user_json experiments/user_context.json
+# Ensure output folder exists
+mkdir -p experiments/results
 
-# 3. Optimize
+echo "[1/3] Loading and exporting EdNet data..."
+python src/ednet_loader.py || {
+    echo "❌ EdNet loader failed"
+    exit 1
+}
+
+echo "[2/3] Running semantic reasoning..."
+python src/ikrae_reasoner.py --user_json experiments/user_context.json || {
+    echo "❌ Semantic reasoning failed"
+    exit 1
+}
+
+echo "[3/3] Optimizing adaptive learning paths..."
 python src/ikrae_optimizer.py \
   --lo_csv experiments/results/learning_objects.csv \
+  --edges_csv experiments/results/prerequisites.csv \
   --user_json experiments/user_context.json \
-  --output experiments/results/path_trace.json
+  --output experiments/results/path_trace.json \
+  --k 3 || {
+    echo "❌ Optimization failed"
+    exit 1
+}
 
-echo "Done! Check experiments/results/"
+echo "Pipeline complete! Results available in experiments/results/"
