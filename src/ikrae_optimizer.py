@@ -1,303 +1,283 @@
-# src/ikrae_optimizer.py
 """
-IKRAE Optimizer: Semantic + Graph-Based Adaptive Learning Path Generation
-- Input: EdNet-processed LOs, user context
-- Output: Optimal path + explainable JSON trace
-- Scalable to 100K+ LOs, <200ms re-planning
+ikrae_optimizer.py
+------------------
+IKRAE graph-based optimizer:
+
+- Input:
+    experiments/results/learning_objects_feasible.csv
+    experiments/results/prerequisites.csv
+    experiments/user_context.json
+
+- Output:
+    experiments/results/path_trace.json
 """
 
 import argparse
 import json
 import time
-import networkx as nx
-import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+
+import networkx as nx
 import numpy as np
+import pandas as pd
 
-# Optional: Owlready2 for lightweight reasoning (fallback if OWLAPI not available)
-try:
-    from owlready2 import get_ontology, default_world
-    OWLREADY_AVAILABLE = True
-except ImportError:
-    OWLREADY_AVAILABLE = False
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = ROOT / "experiments" / "results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# -------------------------------
-# CONFIGURATION
-# -------------------------------
-ALPHA = 0.4  # Duration weight
-BETA = 0.3   # Pedagogical weight (difficulty)
-GAMMA = 0.3  # Context penalty
-K_SHORTEST = 3  # Number of alternative paths
-REAL_TIME_THRESHOLD_MS = 200
+ALPHA = 0.4  # duration weight
+BETA = 0.3   # difficulty (1 - pedagogical weight)
+GAMMA = 0.3  # context penalty weight
+REAL_TIME_THRESHOLD_MS = 200.0
 
-# -------------------------------
-# HELPER: Context Penalty
-# -------------------------------
+
 def compute_context_penalty(lo: Dict, user_context: Dict) -> float:
-    """Calculate penalty based on device, time, language, mastery"""
     penalty = 0.0
 
-    # Device mismatch
-    if lo.get('type') == 'video' and user_context.get('bandwidth') == 'low':
-        penalty += 15
-    if lo.get('type') == 'video' and user_context.get('device') == 'mobile':
-        penalty += 8
+    lo_type = lo.get("type", "question")
+    bandwidth = user_context.get("bandwidth", "high")
+    device = user_context.get("device", "desktop")
+    language = user_context.get("language", "en")
+    mastery = float(user_context.get("mastery_level", 1.0))
+    time_budget = float(user_context.get("time_budget_min", 60.0))
 
-    # Time budget
-    remaining = user_context.get('time_budget_min', 60)
-    if lo.get('duration_min', 5) > remaining * 0.7:
-        penalty += 20
+    duration = float(lo.get("duration_min", 5.0))
+    requires_mastery = float(lo.get("requires_mastery", 0.0))
+    lo_lang = lo.get("language", "en")
+
+    # Low bandwidth + video
+    if lo_type == "video" and bandwidth == "low":
+        penalty += 15.0
+
+    # Mobile + long video
+    if lo_type == "video" and device == "mobile" and duration > 15.0:
+        penalty += 10.0
 
     # Language mismatch
-    if lo.get('language') != user_context.get('language'):
-        penalty += 25
+    if lo_lang and lo_lang != language:
+        penalty += 20.0
 
-    # Prerequisite mastery (from ontology)
-    if lo.get('requires_mastery', 0.0) > user_context.get('mastery_level', 1.0):
-        penalty += 100  # Block infeasible
+    # Mastery margin
+    if requires_mastery > mastery:
+        penalty += 50.0
+
+    # Exceeding budget fraction
+    if duration > 0.7 * time_budget:
+        penalty += 10.0
 
     return penalty
 
-# -------------------------------
-# CORE: Build Weighted DAG
-# -------------------------------
+
 def build_weighted_dag(
     lo_df: pd.DataFrame,
     prereq_edges: List[Tuple[str, str]],
-    user_context: Dict
+    user_context: Dict,
 ) -> nx.DiGraph:
-    """Build DAG with context-sensitive edge weights"""
     G = nx.DiGraph()
 
-    # Add nodes
+    # Add nodes with attributes
     for _, row in lo_df.iterrows():
-        lo_id = str(row['lo_id'])
+        lo_id = str(row["lo_id"])
         G.add_node(lo_id, **row.to_dict())
 
-    # Add prerequisite edges
+    # Add edges from prerequisites
     for src, dst in prereq_edges:
-        G.add_edge(src, dst)
+        if src in G.nodes and dst in G.nodes:
+            G.add_edge(src, dst)
 
-    # Add START and GOAL
-    entry_los = [n for n in G.nodes if G.in_degree(n) == 0 and n not in ['START', 'GOAL']]
-    exit_los = [n for n in G.nodes if G.out_degree(n) == 0 and n not in ['START', 'GOAL']]
+    # Add START / GOAL
     G.add_node("START")
     G.add_node("GOAL")
-    for lo in entry_los:
-        G.add_edge("START", lo, weight=0)
-    for lo in exit_los:
-        G.add_edge(lo, "GOAL", weight=0)
 
-    # Assign edge weights: cost of entering v from u
+    entry_los = [n for n in G.nodes if n not in ("START", "GOAL") and G.in_degree(n) == 0]
+    exit_los = [n for n in G.nodes if n not in ("START", "GOAL") and G.out_degree(n) == 0]
+
+    for lo in entry_los:
+        G.add_edge("START", lo, weight=0.0)
+    for lo in exit_los:
+        G.add_edge(lo, "GOAL", weight=0.0)
+
+    # Compute weights
     for u, v in G.edges():
         if u == "START" or v == "GOAL":
-            G[u][v]['weight'] = 0
+            G[u][v]["weight"] = 0.0
+            G[u][v]["cost_breakdown"] = {
+                "duration": 0.0,
+                "difficulty": 0.0,
+                "penalty": 0.0,
+                "total": 0.0,
+            }
             continue
 
         lo_v = G.nodes[v]
-        duration = lo_v.get('duration_min', 5.0)
-        ped_weight = 1.0 - lo_v.get('pedagogical_weight', 0.5)  # inverse
+        duration = float(lo_v.get("duration_min", 5.0))
+        ped_weight = float(lo_v.get("pedagogical_weight", 0.5))
+        difficulty = 1.0 - ped_weight
         penalty = compute_context_penalty(lo_v, user_context)
 
-        total_cost = (
-            ALPHA * duration +
-            BETA * ped_weight +
-            GAMMA * penalty
-        )
-        G[u][v]['weight'] = max(total_cost, 1e-6)  # Avoid zero/negative
+        total = ALPHA * duration + BETA * difficulty + GAMMA * penalty
+        total = max(total, 1e-6)
 
-        # Store decomposition for explainability
-        G[u][v]['cost_breakdown'] = {
+        G[u][v]["weight"] = total
+        G[u][v]["cost_breakdown"] = {
             "duration": duration,
-            "difficulty": ped_weight,
+            "difficulty": difficulty,
             "penalty": penalty,
-            "total": total_cost
+            "total": total,
         }
 
     return G
 
-# -------------------------------
-# OPTIMIZATION: Dijkstra + k-shortest
-# -------------------------------
-def optimize_path(
-    G: nx.DiGraph,
-    k: int = 1
-) -> List[Dict]:
-    """Run Dijkstra and optional Yen's k-shortest paths"""
+
+def load_edges_from_csv(edges_csv: Optional[Path], lo_df: pd.DataFrame) -> List[Tuple[str, str]]:
+    if edges_csv is None:
+        # fallback: simple chain over feasible LOs
+        lo_ids = lo_df["lo_id"].astype(str).tolist()
+        return list(zip(lo_ids[:-1], lo_ids[1:]))
+
+    if not edges_csv.exists():
+        raise FileNotFoundError(f"Prerequisite CSV not found: {edges_csv}")
+
+    e_df = pd.read_csv(edges_csv)
+    if not {"src", "dst"}.issubset(e_df.columns):
+        raise ValueError("prerequisites.csv must contain columns: src, dst")
+
+    return list(zip(e_df["src"].astype(str), e_df["dst"].astype(str)))
+
+
+def optimize_paths(G: nx.DiGraph, k: int = 1) -> List[Dict]:
     try:
-        if k == 1:
-            path = nx.shortest_path(G, "START", "GOAL", weight='weight')
-            cost = nx.shortest_path_length(G, "START", "GOAL", weight='weight')
-            return [{"path": path, "cost": cost, "rank": 1}]
-        else:
-            # Yen's algorithm via networkx
-            paths = list(nx.shortest_simple_paths(G, "START", "GOAL", weight='weight'))[:k]
-            results = []
-            for i, path in enumerate(paths, 1):
-                cost = sum(G[path[j]][path[j+1]]['weight'] for j in range(len(path)-1))
-                results.append({"path": path, "cost": cost, "rank": i})
-            return results
+        if k <= 1:
+            path = nx.shortest_path(G, "START", "GOAL", weight="weight")
+            cost = nx.shortest_path_length(G, "START", "GOAL", weight="weight")
+            return [{"rank": 1, "path": path, "cost": float(cost)}]
+
+        paths = list(nx.shortest_simple_paths(G, "START", "GOAL", weight="weight"))[:k]
+        results = []
+        for i, path in enumerate(paths, start=1):
+            cost = 0.0
+            for u, v in zip(path[:-1], path[1:]):
+                cost += float(G[u][v]["weight"])
+            results.append({"rank": i, "path": path, "cost": float(cost)})
+        return results
+
     except nx.NetworkXNoPath:
-        return [{"path": None, "cost": float('inf'), "error": "No feasible path"}]
+        return [{"rank": 1, "path": None, "cost": float("inf"), "error": "No feasible path"}]
 
-# -------------------------------
-# EXPLAINABILITY: Generate Trace
-# -------------------------------
-def generate_explanation(
+
+def build_explanation(
     G: nx.DiGraph,
-    path_result: Dict,
+    paths: List[Dict],
     user_context: Dict,
-    infeasible_los: List[str]
+    infeasible_los_trace: Optional[List[Dict]] = None,
+    runtime_ms: float = 0.0,
 ) -> Dict:
-    """Generate human-readable + JSON explanation"""
-    path = path_result['path']
-    if not path or path[0] is None:
-        return {"error": "No path found", "infeasible_count": len(infeasible_los)}
-
-    trace = {
+    primary = paths[0]
+    explanation = {
         "user_context": user_context,
-        "optimal_path": path,
-        "total_cost": path_result['cost'],
-        "cost_breakdown": [],
-        "excluded_los": [],
-        "included_reasons": [],
-        "k_alternatives": []
+        "runtime_ms": runtime_ms,
+        "real_time_compliant": runtime_ms < REAL_TIME_THRESHOLD_MS,
+        "paths": paths,
+        "primary_path": primary,
+        "primary_cost_breakdown": [],
+        "excluded_los": infeasible_los_trace or [],
     }
 
-    # Path cost decomposition
-    for i in range(len(path) - 1):
-        u, v = path[i], path[i+1]
-        breakdown = G[u][v].get('cost_breakdown', {})
-        trace['cost_breakdown'].append({
-            "from": u, "to": v, "details": breakdown
-        })
+    path = primary.get("path")
+    if not path or path[0] is None:
+        explanation["error"] = primary.get("error", "No path found")
+        return explanation
 
-    # Infeasible LOs
-    for lo in infeasible_los:
-        reason = "unknown"
-        lo_data = G.nodes.get(lo, {})
-        if lo_data.get('requires_mastery', 0) > user_context.get('mastery_level', 1):
-            reason = f"mastery too low (need {lo_data['requires_mastery']})"
-        elif lo_data.get('type') == 'video' and user_context.get('bandwidth') == 'low':
-            reason = "low bandwidth + video"
-        trace['excluded_los'].append({"lo": lo, "reason": reason})
+    for u, v in zip(path[:-1], path[1:]):
+        bd = G[u][v].get("cost_breakdown", {})
+        explanation["primary_cost_breakdown"].append(
+            {"from": u, "to": v, "details": bd}
+        )
 
-    return trace
-
-# -------------------------------
-# SEMANTIC FILTER (Lightweight via Owlready2)
-# -------------------------------
-def apply_semantic_filter(
-    lo_df: pd.DataFrame,
-    user_context: Dict,
-    ontology_path: Optional[str] = None
-) -> Tuple[pd.DataFrame, List[str]]:
-    """Filter infeasible LOs using SWRL rules (Owlready2 fallback)"""
-    infeasible = []
-
-    # Rule-based filtering (mimics SWRL)
-    filtered = []
-    for _, row in lo_df.iterrows():
-        lo = row.to_dict()
-        lo_id = str(lo['lo_id'])
-
-        # Prerequisite mastery
-        if lo.get('requires_mastery', 0) > user_context.get('mastery_level', 1.0):
-            infeasible.append(lo_id)
-            continue
-
-        # Device
-        if lo.get('type') == 'video' and user_context.get('bandwidth') == 'low':
-            infeasible.append(lo_id)
-            continue
-
-        # Language
-        if lo.get('language') and lo['language'] != user_context['language']:
-            infeasible.append(lo_id)
-            continue
-
-        filtered.append(row)
-
-    filtered_df = pd.DataFrame(filtered).reset_index(drop=True)
-    return filtered_df, infeasible
-
-# -------------------------------
-# MAIN PIPELINE
-# -------------------------------
-def run_ikrae_pipeline(
-    lo_csv: str,
-    prereq_edges: List[Tuple[str, str]],
-    user_context: Dict,
-    output_json: str,
-    k: int = 1,
-    use_semantic: bool = True
-) -> Dict:
-    start_time = time.time()
-
-    # 1. Load LOs
-    lo_df = pd.read_csv(lo_csv)
-    print(f"Loaded {len(lo_df)} learning objects")
-
-    # 2. Semantic filtering
-    if use_semantic:
-        lo_df, infeasible = apply_semantic_filter(lo_df, user_context)
-        print(f"Filtered out {len(infeasible)} infeasible LOs")
-    else:
-        infeasible = []
-
-    # 3. Build weighted DAG
-    G = build_weighted_dag(lo_df, prereq_edges, user_context)
-
-    # 4. Optimize
-    paths = optimize_path(G, k=k)
-    primary = paths[0]
-
-    # 5. Explain
-    explanation = generate_explanation(G, primary, user_context, infeasible)
-
-    # 6. Add alternatives
-    explanation['k_alternatives'] = [
-        {"rank": p['rank'], "cost": p['cost'], "path": p['path']}
-        for p in paths[1:]
-    ]
-
-    # 7. Save
-    total_time = (time.time() - start_time) * 1000  # ms
-    explanation['runtime_ms'] = total_time
-    explanation['real_time_compliant'] = total_time < REAL_TIME_THRESHOLD_MS
-
-    with open(output_json, 'w') as f:
-        json.dump(explanation, f, indent=2)
-
-    print(f"Path computed in {total_time:.1f}ms → {output_json}")
     return explanation
 
-# -------------------------------
-# CLI
-# -------------------------------
+
+def run_optimizer(
+    lo_csv: Path,
+    edges_csv: Optional[Path],
+    user_json: Path,
+    infeasible_json: Optional[Path],
+    output_json: Path,
+    k: int = 1,
+) -> Dict:
+    start = time.time()
+
+    lo_df = pd.read_csv(lo_csv)
+    with open(user_json, encoding="utf-8") as f:
+        user_ctx = json.load(f)
+
+    if infeasible_json is not None and infeasible_json.exists():
+        with open(infeasible_json, encoding="utf-8") as f:
+            infeasible_trace = json.load(f)
+    else:
+        infeasible_trace = []
+
+    print(f"[Optimizer] Loaded {len(lo_df)} feasible LOs.")
+    edges = load_edges_from_csv(edges_csv, lo_df)
+    print(f"[Optimizer] Using {len(edges)} prerequisite edges.")
+
+    G = build_weighted_dag(lo_df, edges, user_ctx)
+    paths = optimize_paths(G, k=k)
+
+    runtime_ms = (time.time() - start) * 1000.0
+    explanation = build_explanation(
+        G,
+        paths,
+        user_ctx,
+        infeasible_los_trace=infeasible_trace,
+        runtime_ms=runtime_ms,
+    )
+
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_json, "w", encoding="utf-8") as f:
+        json.dump(explanation, f, indent=2)
+
+    print(f"[Optimizer] Done in {runtime_ms:.1f} ms → {output_json}")
+    return explanation
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="IKRAE Optimizer")
-    parser.add_argument("--lo_csv", default="../experiments/results/learning_objects.csv")
-    parser.add_argument("--user_json", required=True, help="User context JSON")
-    parser.add_argument("--output", default="../experiments/results/path_trace.json")
+    parser.add_argument(
+        "--lo_csv",
+        default=str(RESULTS_DIR / "learning_objects_feasible.csv"),
+        help="Feasible LOs CSV",
+    )
+    parser.add_argument(
+        "--edges_csv",
+        default=str(RESULTS_DIR / "prerequisites.csv"),
+        help="Prerequisites CSV (src,dst)",
+    )
+    parser.add_argument(
+        "--user_json",
+        default=str(ROOT / "experiments" / "user_context.json"),
+        help="User context JSON",
+    )
+    parser.add_argument(
+        "--infeasible_json",
+        default=str(RESULTS_DIR / "infeasible_los.json"),
+        help="Infeasible LOs trace JSON (from reasoner)",
+    )
+    parser.add_argument(
+        "--output",
+        default=str(RESULTS_DIR / "path_trace.json"),
+        help="Output explanation JSON",
+    )
     parser.add_argument("--k", type=int, default=1, help="Number of alternative paths")
-    parser.add_argument("--no_semantic", action="store_false", dest="use_semantic")
 
     args = parser.parse_args()
 
-    # Load user context
-    with open(args.user_json) as f:
-        user_context = json.load(f)
-
-    # Dummy prereq edges (replace with ednet_loader output)
-    prereq_edges = [("START", "q1"), ("q1", "q2"), ("q2", "GOAL")]
-
-    run_ikrae_pipeline(
-        lo_csv=args.lo_csv,
-        prereq_edges=prereq_edges,
-        user_context=user_context,
-        output_json=args.output,
+    run_optimizer(
+        lo_csv=Path(args.lo_csv),
+        edges_csv=Path(args.edges_csv) if args.edges_csv else None,
+        user_json=Path(args.user_json),
+        infeasible_json=Path(args.infeasible_json) if args.infeasible_json else None,
+        output_json=Path(args.output),
         k=args.k,
-        use_semantic=args.use_semantic
     )
