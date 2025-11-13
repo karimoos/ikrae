@@ -1,82 +1,57 @@
 """
-IKRAE-EdNet Experimental Benchmark
-----------------------------------
-Runs full preprocessing → optimization pipeline
-and measures scalability across learning object (LO) sizes.
+run_experiments.py
+------------------
+Example experiment script for IKRAE:
+
+- Runs online EdNet loading
+- Runs semantic filter
+- Runs optimizer
+- Prints runtime and basic stats
 """
 
-import subprocess
-import time
-import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
-from ednet_loader import load_ednet_kt3, export_for_ikrae
+import time
+import json
 
-RESULTS = Path("../experiments/results")
-RESULTS.mkdir(parents=True, exist_ok=True)
+from ednet_loader import export_online_ednet
+from ikrae_reasoner import run_reasoner
+from ikrae_optimizer import run_optimizer
+
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = ROOT / "experiments" / "results"
 
 
-def run_ikrae_pipeline(lo_csv, user_json, out_json, edges_csv=None, k=3):
-    """Run the IKRAE optimizer and return runtime in seconds."""
-    start = time.time()
-    cmd = (
-        f"python src/ikrae_optimizer.py "
-        f"--lo_csv {lo_csv} "
-        f"--user_json {user_json} "
-        f"--output {out_json} "
-        f"--k {k} "
+def run_single_experiment(sample_users: int = 5000, k_paths: int = 3) -> None:
+    user_json = ROOT / "experiments" / "user_context.json"
+    lo_raw = RESULTS_DIR / "learning_objects.csv"
+    lo_feasible = RESULTS_DIR / "learning_objects_feasible.csv"
+    infeasible_json = RESULTS_DIR / "infeasible_los.json"
+    edges_csv = RESULTS_DIR / "prerequisites.csv"
+    path_trace = RESULTS_DIR / "path_trace.json"
+
+    t0 = time.time()
+    export_online_ednet(sample_users=sample_users)
+    t1 = time.time()
+    run_reasoner(lo_csv=lo_raw, user_json=user_json,
+                 feasible_csv=lo_feasible, infeasible_json=infeasible_json)
+    t2 = time.time()
+    explanation = run_optimizer(
+        lo_csv=lo_feasible,
+        edges_csv=edges_csv,
+        user_json=user_json,
+        infeasible_json=infeasible_json,
+        output_json=path_trace,
+        k=k_paths,
     )
-    if edges_csv:
-        cmd += f"--edges_csv {edges_csv} "
-    subprocess.run(cmd, shell=True, check=True)
-    return time.time() - start
+    t3 = time.time()
 
-
-def benchmark_scalability(lo_csv, user_json, edges_csv, out_dir=RESULTS):
-    """Run optimizer for increasing LO sizes and record runtime."""
-    sizes = [200, 1000, 5000, 10000, 50000, 100000]
-    times = []
-    full_df = pd.read_csv(lo_csv)
-
-    for size in sizes:
-        sampled_csv = out_dir / f"learning_objects_{size}.csv"
-        full_df.sample(n=min(size, len(full_df)), random_state=42).to_csv(sampled_csv, index=False)
-        out_json = out_dir / f"path_trace_{size}.json"
-        print(f"\n▶ Running pipeline with {size} LOs...")
-        elapsed = run_ikrae_pipeline(str(sampled_csv), user_json, str(out_json), edges_csv)
-        times.append(elapsed)
-        print(f"⏱ {size} LOs completed in {elapsed:.3f}s")
-
-    df = pd.DataFrame({"LOs": sizes, "Time_s": times})
-    df.to_csv(out_dir / "scalability.csv", index=False)
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(df["LOs"], df["Time_s"], marker="o")
-    plt.xlabel("Number of Learning Objects")
-    plt.ylabel("Computation Time (s)")
-    plt.title("IKRAE-EdNet Scalability Benchmark")
-    plt.grid(True)
-    plt.savefig(out_dir / "scalability.png", dpi=300, bbox_inches="tight")
-    print(f"\n✅ Scalability results saved to {out_dir}/scalability.png")
+    print("\n=== Experiment Summary ===")
+    print(f"EdNet load + export: {1000*(t1 - t0):.1f} ms")
+    print(f"Semantic reasoning:  {1000*(t2 - t1):.1f} ms")
+    print(f"Optimization:        {1000*(t3 - t2):.1f} ms")
+    print(f"Total:               {1000*(t3 - t0):.1f} ms")
+    print(f"Real-time compliant? {explanation.get('real_time_compliant')}")
 
 
 if __name__ == "__main__":
-    print("=== IKRAE-EdNet Experiments ===")
-    questions = pd.read_csv("../data/ednet/content/questions.csv")
-    kt3 = load_ednet_kt3(sample_users=10000)
-    lectures = pd.DataFrame(columns=["lecture_id", "video_length"])
-    export_for_ikrae(kt3, questions, lectures, output_dir=RESULTS)
-
-    lo_csv = str(RESULTS / "learning_objects.csv")
-    edges_csv = str(RESULTS / "prerequisites.csv")
-    user_json = "../experiments/user_context.json"
-    out_json = str(RESULTS / "path_trace.json")
-
-    print("\n▶ Running baseline IKRAE pipeline...")
-    t = run_ikrae_pipeline(lo_csv, user_json, out_json, edges_csv)
-    print(f"✅ Baseline path generation: {t:.2f}s")
-
-    print("\n▶ Running scalability benchmark...")
-    benchmark_scalability(lo_csv, user_json, edges_csv)
-
-    print(f"\n✅ All experiments done. Results in {RESULTS.resolve()}")
+    run_single_experiment(sample_users=2000, k_paths=3)
