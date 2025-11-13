@@ -1,27 +1,31 @@
-#!/usr/bin/env bash
+#!/bin/bash
+
+echo "======================================"
+echo "        IKRAE FULL PIPELINE           "
+echo "======================================"
+
+# Exit on error
 set -e
 
-# Resolve repo root
-ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$ROOT_DIR"
+# 1. Online EdNet extraction
+echo "[1/3] Loading EdNet and building LO tables..."
+python3 src/ednet_loader.py
 
-echo "[1/3] Online EdNet → learning_objects.csv & prerequisites.csv"
-python src/ednet_loader.py --sample_users 5000
+# 2. Semantic filtering
+echo "[2/3] Applying semantic filtering..."
+python3 src/ikrae_reasoner.py
 
-echo "[2/3] Semantic reasoning → feasible LOs + infeasible trace"
-python src/ikrae_reasoner.py \
-  --lo_csv experiments/results/learning_objects.csv \
-  --user_json experiments/user_context.json \
-  --feasible_csv experiments/results/learning_objects_feasible.csv \
-  --infeasible_json experiments/results/infeasible_los.json
+# 3. Optimization
+echo "[3/3] Running graph optimizer..."
+python3 src/ikrae_optimizer.py
 
-echo "[3/3] Optimization → path_trace.json"
-python src/ikrae_optimizer.py \
-  --lo_csv experiments/results/learning_objects_feasible.csv \
-  --edges_csv experiments/results/prerequisites.csv \
-  --user_json experiments/user_context.json \
-  --infeasible_json experiments/results/infeasible_los.json \
-  --output experiments/results/path_trace.json \
-  --k 3
+echo "======================================"
+echo "     Pipeline completed successfully   "
+echo "======================================"
 
-echo "IKRAE pipeline finished. See experiments/results/path_trace.json"
+echo "Generated files in: experiments/results/"
+echo " - learning_objects.csv"
+echo " - prerequisites.csv"
+echo " - learning_objects_feasible.csv"
+echo " - infeasible_los.json"
+echo " - path_trace.json"
