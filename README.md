@@ -87,7 +87,6 @@ flowchart LR
     style D fill:#f9f9ff,stroke:#088178,stroke-width:1px
     style E fill:#f0fff0,stroke:#088178,stroke-width:1px
 ```
-----
 ## 📄 User Context
 
 IKRAE takes a simple JSON file describing the learner context:
@@ -137,9 +136,12 @@ IKRAE/
 ```
 📜 Citation
 ```
-"If you use this software, please cite it as below."
-title: "IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning"
-version: "1.0.0" doi: 10.5281/zenodo.17464127"
-author: "AZIZ ABDELKARIM"
-license: MIT
+@software{ikrae2025,
+  title  = {IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning},
+  author = {Aziz Abdelkarim},
+  year   = {2025},
+  version = {1.0.0},
+  doi    = {10.5281/zenodo.17464127},
+  license = {MIT}
+}
 ```
