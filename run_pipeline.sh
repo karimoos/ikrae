@@ -1,33 +1,27 @@
-#!/bin/bash
-echo "=== Starting IKRAE Full Pipeline ==="
+#!/usr/bin/env bash
+set -e
 
-# Activate environment if needed
-# source venv/bin/activate
+# Resolve repo root
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$ROOT_DIR"
 
-# Ensure output folder exists
-mkdir -p experiments/results
+echo "[1/3] Online EdNet → learning_objects.csv & prerequisites.csv"
+python src/ednet_loader.py --sample_users 5000
 
-echo "[1/3] Loading and exporting EdNet data..."
-python src/ednet_loader.py || {
-    echo "❌ EdNet loader failed"
-    exit 1
-}
-
-echo "[2/3] Running semantic reasoning..."
-python src/ikrae_reasoner.py --user_json experiments/user_context.json || {
-    echo "❌ Semantic reasoning failed"
-    exit 1
-}
-
-echo "[3/3] Optimizing adaptive learning paths..."
-python src/ikrae_optimizer.py \
+echo "[2/3] Semantic reasoning → feasible LOs + infeasible trace"
+python src/ikrae_reasoner.py \
   --lo_csv experiments/results/learning_objects.csv \
+  --user_json experiments/user_context.json \
+  --feasible_csv experiments/results/learning_objects_feasible.csv \
+  --infeasible_json experiments/results/infeasible_los.json
+
+echo "[3/3] Optimization → path_trace.json"
+python src/ikrae_optimizer.py \
+  --lo_csv experiments/results/learning_objects_feasible.csv \
   --edges_csv experiments/results/prerequisites.csv \
   --user_json experiments/user_context.json \
+  --infeasible_json experiments/results/infeasible_los.json \
   --output experiments/results/path_trace.json \
-  --k 3 || {
-    echo "❌ Optimization failed"
-    exit 1
-}
+  --k 3
 
-echo "Pipeline complete! Results available in experiments/results/"
+echo "IKRAE pipeline finished. See experiments/results/path_trace.json"
