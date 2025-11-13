@@ -86,3 +86,60 @@ flowchart LR
     style C fill:#fff5e7,stroke:#088178,stroke-width:1px
     style D fill:#f9f9ff,stroke:#088178,stroke-width:1px
     style E fill:#f0fff0,stroke:#088178,stroke-width:1px
+```
+----
+## 📄 User Context
+
+IKRAE takes a simple JSON file describing the learner context:
+
+`experiments/user_context.json`:
+
+```json
+{
+  "user_id": "U123",
+  "language": "en",
+  "device": "mobile",
+  "bandwidth": "low",
+  "mastery_level": 0.65,
+  "time_budget_min": 25
+}
+```
+📊 Example Output (path_trace.json)
+```
+{
+  "runtime_ms": 147.2,
+  "real_time_compliant": true,
+  "primary_path": ["START", "Q_17", "Q_44", "Q_88", "GOAL"],
+  "excluded_los": [
+    {"lo_id": "L_55", "reason": "low bandwidth + video"},
+    {"lo_id": "Q_210", "reason": "requires mastery 0.80 > user mastery 0.65"}
+  ]
+}
+```
+📁 Repository Structure
+```
+IKRAE/
+│
+├── src/
+│   ├── ednet_loader.py        # Online EdNet + LO stats + real prerequisites
+│   ├── ikrae_reasoner.py      # Context-aware semantic filter
+│   ├── ikrae_optimizer.py     # Graph optimizer
+│   └── run_experiments.py
+│
+├── experiments/
+│   ├── user_context.json
+│   └── results/
+│
+├── ontology/                  # Optional: OWL + SWRL (Java/HermiT)
+│
+├── run_pipeline.sh
+└── requirements.txt
+```
+📜 Citation
+```
+"If you use this software, please cite it as below."
+title: "IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning"
+version: "1.0.0" doi: 10.5281/zenodo.17464127"
+author: "AZIZ ABDELKARIM"
+license: MIT
+```
