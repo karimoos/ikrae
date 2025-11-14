@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](docker/Dockerfile)
-![CI Status](https://github.com/YOUR_USERNAME/ikrae/actions/workflows/ci.yml/badge.svg)
+![CI Status](https://github.com/karimoos/ikrae/actions/workflows/ci.yml/badge.svg)
 
 ---
 
