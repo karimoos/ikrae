@@ -20,17 +20,16 @@ CONTENT_URL = "https://ednet-kt3.s3.ap-northeast-2.amazonaws.com/contents.zip"
 # ----------------------------------------------------
 
 def download_and_extract_zip(url):
-    """Handle real download locally, dummy dataset in CI."""
+    """Handle CI-mode (dummy data) and full download locally."""
     
     # ------------------------------------------------
-    # CI MODE → skip download
+    # CI MODE (GitHub Actions)
     # ------------------------------------------------
-    if os.environ.get("CI") == "true":
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
         print("[CI MODE] Skipping EdNet download for:", url)
 
-        # Return a minimal fake ZIP content depending on URL
         if "KT3" in url:
-            # Create tiny fake KT3 interactions
+            # Fake KT3.csv (4 rows)
             df = pd.DataFrame({
                 "user_id": [1, 1, 2, 2],
                 "question_id": [10, 11, 10, 11],
@@ -41,18 +40,19 @@ def download_and_extract_zip(url):
             })
             return {"KT3.csv": df.to_csv(index=False).encode()}
 
-        else:  # contents.zip
+        else:
+            # Fake questions/lectures metadata
             questions = pd.DataFrame({
                 "question_id": [10, 11],
                 "tags": ["A", "B"]
             })
             return {
                 "questions.csv": questions.to_csv(index=False).encode(),
-                "lectures.csv": pd.DataFrame().to_csv(index=False).encode()  # dummy
+                "lectures.csv": pd.DataFrame({"dummy": []}).to_csv(index=False).encode()
             }
 
     # ------------------------------------------------
-    # NORMAL MODE → real download
+    # NORMAL MODE → real online download
     # ------------------------------------------------
     print(f"[Download] Fetching: {url}")
     response = requests.get(url)
@@ -168,4 +168,8 @@ def export_online_ednet(sample_rows=None):
 # ----------------------------------------------------
 
 if __name__ == "__main__":
-    export_online_ednet(sample_rows=500000)
+    # Use tiny sample in CI for speed
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+        export_online_ednet(sample_rows=1000)
+    else:
+        export_online_ednet(sample_rows=500000)
