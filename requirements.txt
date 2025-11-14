@@ -7,3 +7,4 @@ matplotlib>=3.7
 seaborn>=0.13
 py4j>=0.10.9.7
 tqdm>=4.66
+requests
