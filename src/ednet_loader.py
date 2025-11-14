@@ -69,8 +69,9 @@ def load_kt3(sample_rows=None):
     csv_bytes = data["KT3.csv"]
     df = pd.read_csv(io.BytesIO(csv_bytes))
 
-    if sample_rows:
-        df = df.sample(sample_rows, random_state=42)
+    if sample_rows and not (os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")):
+    df = df.sample(sample_rows, random_state=42)
+
 
     print(f"[KT3] Loaded {len(df):,} rows")
     return df
@@ -168,8 +169,7 @@ def export_online_ednet(sample_rows=None):
 # ----------------------------------------------------
 
 if __name__ == "__main__":
-    # Use tiny sample in CI for speed
     if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        export_online_ednet(sample_rows=1000)
+        export_online_ednet(sample_rows=None)  # no sampling in CI
     else:
         export_online_ednet(sample_rows=500000)
