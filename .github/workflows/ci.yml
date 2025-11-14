@@ -22,7 +22,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: .docker/Dockerfile
           push: false
           load: true      # <-- THIS IS THE FIX
           tags: ikrae:latest
