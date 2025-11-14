@@ -70,7 +70,7 @@ def load_kt3(sample_rows=None):
     df = pd.read_csv(io.BytesIO(csv_bytes))
 
     if sample_rows and not (os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")):
-    df = df.sample(sample_rows, random_state=42)
+        df = df.sample(sample_rows, random_state=42)
 
 
     print(f"[KT3] Loaded {len(df):,} rows")
