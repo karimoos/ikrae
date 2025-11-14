@@ -30,9 +30,11 @@ jobs:
       # 4) Run the IKRAE pipeline inside Docker
       - name: Run IKRAE Pipeline
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/experiments/results:/app/experiments/results \
-            ikrae:latest bash run_pipeline.sh
+              docker run --rm \
+              -e CI=true \
+              -e GITHUB_ACTIONS=true \
+              -v ${{ github.workspace }}/experiments/results:/app/experiments/results \
+              ikrae:latest bash run_pipeline.sh
 
       # 5) Upload results as GitHub artifact
       - name: Upload IKRAE results
