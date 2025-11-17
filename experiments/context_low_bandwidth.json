@@ -1,0 +1,14 @@
+{
+  "user_id": "U_AR03",
+  "language": "ar",
+  "device": "mobile",
+  "bandwidth": "low",
+  "time_budget_min": 20.0,
+  "mastery_level": 0.55,
+  "platform": "android",
+  "session_start": "2025-11-01T16:20:00Z",
+  "preferences": {
+    "pace": "slow",
+    "difficulty": "intermediate"
+  }
+}
