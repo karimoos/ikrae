@@ -1,0 +1,14 @@
+{
+  "user_id": "U_LOW02",
+  "language": "en",
+  "device": "tablet",
+  "bandwidth": "medium",
+  "time_budget_min": 30.0,
+  "mastery_level": 0.28,
+  "platform": "ios",
+  "session_start": "2025-11-02T09:45:00Z",
+  "preferences": {
+    "pace": "normal",
+    "difficulty": "beginner"
+  }
+}
