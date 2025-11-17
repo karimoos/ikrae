@@ -1,0 +1,14 @@
+{
+  "user_id": "U_HIGH01",
+  "language": "en",
+  "device": "desktop",
+  "bandwidth": "high",
+  "time_budget_min": 45.0,
+  "mastery_level": 0.92,
+  "platform": "web",
+  "session_start": "2025-10-27T14:15:00Z",
+  "preferences": {
+    "pace": "fast",
+    "difficulty": "advanced"
+  }
+}
