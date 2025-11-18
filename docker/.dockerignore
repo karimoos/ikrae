@@ -1,10 +1,33 @@
+# ================================
+# Python cache
+# ================================
 __pycache__/
 *.pyc
 *.pyo
 *.tmp
-*.zip
-data/
+
+# ================================
+# DO NOT ignore ALL ZIP files
+# We need to keep the dataset zip.
+# Ignore others using patterns if needed.
+# ================================
+# *.zip   <-- REMOVE this line, we need the dataset zip.
+
+# ================================
+# DATA: ignore everything except the cleaned EdNet dataset
+# ================================
+data/*
+!data/ikrae_kt3_clean.zip
+
+# ================================
+# Experiments: ignore generated results except .gitkeep
+# ================================
 experiments/results/*
+!experiments/results/.gitkeep
+
+# ================================
+# Git / OS
+# ================================
 .git
 .gitignore
 .DS_Store

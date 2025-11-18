@@ -2,108 +2,127 @@ import pandas as pd
 import numpy as np
 import zipfile
 import io
-import requests
 import os
 from pathlib import Path
 
-# Output directory
-OUT = Path("experiments/results")
+# ==========================================
+# CONFIG
+# ==========================================
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_ZIP = ROOT / "data" / "ikrae_kt3_clean.zip"   # local dataset
+OUT = ROOT / "experiments" / "results"
 OUT.mkdir(parents=True, exist_ok=True)
 
-# EdNet download links
-KT3_URL = "https://ednet-kt3.s3.ap-northeast-2.amazonaws.com/KT3.zip"
-CONTENT_URL = "https://ednet-kt3.s3.ap-northeast-2.amazonaws.com/contents.zip"
+CI_MODE = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
 
 
-# ----------------------------------------------------
-# 1. Download + extract ZIP files in memory
-# ----------------------------------------------------
-
-def download_and_extract_zip(url):
-    """Handle CI-mode (dummy data) and full download locally."""
-    
-    # ------------------------------------------------
-    # CI MODE (GitHub Actions)
-    # ------------------------------------------------
-    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        print("[CI MODE] Skipping EdNet download for:", url)
-
-        if "KT3" in url:
-            # Fake KT3.csv (4 rows)
-            df = pd.DataFrame({
-                "user_id": [1, 1, 2, 2],
-                "question_id": [10, 11, 10, 11],
-                "correct_answer": [1, 0, 1, 1],
-                "user_answer": [1, 0, 1, 1],
-                "elapsed_time": [30000, 40000, 25000, 35000],
-                "timestamp": [1000, 2000, 1000, 3000]
-            })
-            return {"KT3.csv": df.to_csv(index=False).encode()}
-
-        else:
-            # Fake questions/lectures metadata
-            questions = pd.DataFrame({
-                "question_id": [10, 11],
-                "tags": ["A", "B"]
-            })
-            return {
-                "questions.csv": questions.to_csv(index=False).encode(),
-                "lectures.csv": pd.DataFrame({"dummy": []}).to_csv(index=False).encode()
-            }
-
-    # ------------------------------------------------
-    # NORMAL MODE → real online download
-    # ------------------------------------------------
-    print(f"[Download] Fetching: {url}")
-    response = requests.get(url)
-    z = zipfile.ZipFile(io.BytesIO(response.content))
-    return {name: z.read(name) for name in z.namelist()}
-
-
-# ----------------------------------------------------
-# 2. Load KT3 + content CSVs directly from zip files
-# ----------------------------------------------------
+# ==========================================
+# 1. Load KT3 (local zip or CI dummy)
+# ==========================================
 
 def load_kt3(sample_rows=None):
-    data = download_and_extract_zip(KT3_URL)
-    csv_bytes = data["KT3.csv"]
-    df = pd.read_csv(io.BytesIO(csv_bytes))
+    """Load KT3 interactions.
 
-    if sample_rows and not (os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")):
+    - In CI: tiny synthetic dataset (fast, no big files).
+    - Locally: read from data/ikrae_kt3_clean.zip.
+    """
+
+    if CI_MODE:
+        print("[CI MODE] Using tiny synthetic KT3 dataset")
+        df = pd.DataFrame({
+            "user_id":   [1, 1, 2, 2],
+            "timestamp": [1_000, 2_000, 1_000, 3_000],
+            "item_id":   ["Q10", "Q11", "Q10", "Q11"],
+            "user_answer": [1, 0, 1, 1],
+        })
+        return df
+
+    if not DATA_ZIP.exists():
+        raise FileNotFoundError(f"KT3 zip not found at {DATA_ZIP}")
+
+    print(f"[Local ZIP] Loading KT3 from {DATA_ZIP}")
+    with zipfile.ZipFile(DATA_ZIP, "r") as z:
+        # pick the first CSV inside the zip
+        csv_names = [n for n in z.namelist() if n.lower().endswith(".csv")]
+        if not csv_names:
+            raise RuntimeError("No CSV file found inside ikrae_kt3_clean.zip")
+        csv_name = csv_names[0]
+        print(f"[Local ZIP] Using internal file: {csv_name}")
+        df = pd.read_csv(z.open(csv_name))
+
+    if sample_rows and len(df) > sample_rows:
         df = df.sample(sample_rows, random_state=42)
-
+        print(f"[KT3] Sampled {len(df):,} rows")
 
     print(f"[KT3] Loaded {len(df):,} rows")
     return df
 
 
-def load_questions():
-    data = download_and_extract_zip(CONTENT_URL)
-    df = pd.read_csv(io.BytesIO(data["questions.csv"]))
-    print(f"[questions] Loaded {len(df):,} questions")
-    return df
+# ==========================================
+# 2. Minimal questions table from KT3
+# ==========================================
+
+def build_questions_from_kt3(kt3_df):
+    """Create a minimal questions table from KT3 item ids."""
+    print("[Questions] Building minimal questions table from KT3")
+
+    qid_col = "question_id" if "question_id" in kt3_df.columns else "item_id"
+    unique_ids = kt3_df[qid_col].astype(str).unique()
+
+    questions = pd.DataFrame({
+        "question_id": unique_ids,
+        "tags": [["generic"]] * len(unique_ids)
+    })
+
+    print(f"[Questions] Created {len(questions):,} rows")
+    return questions
 
 
-def load_lectures():
-    data = download_and_extract_zip(CONTENT_URL)
-    df = pd.read_csv(io.BytesIO(data["lectures.csv"]))
-    print(f"[lectures] Loaded {len(df):,} lectures")
-    return df
-
-
-# ----------------------------------------------------
+# ==========================================
 # 3. Build learning objects table
-# ----------------------------------------------------
+# ==========================================
 
 def build_learning_objects(kt3_df, questions_df):
     print("[Build] Constructing learning objects...")
 
-    questions_df = questions_df.rename(columns={"question_id": "lo_id"})
+    # Figure out column names
+    qid_src = "question_id" if "question_id" in kt3_df.columns else "item_id"
+    time_col = None
+    for cand in ["elapsed_time", "duration", "time_ms"]:
+        if cand in kt3_df.columns:
+            time_col = cand
+            break
 
-    stats = kt3_df.groupby("question_id").agg(
-        duration_min=("elapsed_time", lambda x: x.mean() / 60000),
-        accuracy=("user_answer", lambda s: (s == kt3_df.loc[s.index, "correct_answer"]).mean())
-    ).reset_index().rename(columns={"question_id": "lo_id"})
+    # Accuracy sources
+    correct_col = None
+    if "correct_answer" in kt3_df.columns:
+        correct_col = "correct_answer"
+    elif "correct" in kt3_df.columns:
+        correct_col = "correct"
+
+    user_col = "user_answer" if "user_answer" in kt3_df.columns else None
+
+    # Build stats
+    def duration_agg(x):
+        if time_col is None:
+            return 1.0  # fallback 1 minute
+        return x.mean() / 60000.0
+
+    def accuracy_agg(s):
+        if correct_col and user_col and correct_col in kt3_df.columns and user_col in kt3_df.columns:
+            return (kt3_df.loc[s.index, user_col] == kt3_df.loc[s.index, correct_col]).mean()
+        if correct_col and correct_col in kt3_df.columns:
+            return kt3_df.loc[s.index, correct_col].mean()
+        # fallback default accuracy
+        return 0.7
+
+    stats = kt3_df.groupby(qid_src).agg(
+        duration_min=(time_col if time_col else qid_src, duration_agg),
+        accuracy=(qid_src, accuracy_agg),
+    ).reset_index().rename(columns={qid_src: "lo_id"})
+
+    questions_df = questions_df.rename(columns={"question_id": "lo_id"})
 
     lo = questions_df.merge(stats, on="lo_id", how="left")
 
@@ -115,43 +134,43 @@ def build_learning_objects(kt3_df, questions_df):
     lo["requires_mastery"] = np.clip(1 - lo["accuracy"], 0.0, 1.0)
     lo["pedagogical_weight"] = 1 - lo["accuracy"]
 
-    print("[Build] Learning objects:", len(lo))
+    print(f"[Build] Learning objects: {len(lo):,}")
     return lo
 
 
-# ----------------------------------------------------
+# ==========================================
 # 4. REAL prerequisite graph (from sequential transitions)
-# ----------------------------------------------------
+# ==========================================
 
 def build_prerequisite_edges_real(kt3_df):
     print("[Prereq] Building real EdNet prerequisite graph...")
+
+    qid_col = "question_id" if "question_id" in kt3_df.columns else "item_id"
 
     kt3_df = kt3_df.sort_values(["user_id", "timestamp"])
 
     transitions = []
     for uid, group in kt3_df.groupby("user_id"):
-        seq = group["question_id"].astype(str).tolist()
+        seq = group[qid_col].astype(str).tolist()
         for i in range(len(seq) - 1):
             transitions.append((seq[i], seq[i + 1]))
 
     trans_df = pd.DataFrame(transitions, columns=["src", "dst"])
     freq = trans_df.groupby(["src", "dst"]).size().reset_index(name="count")
-    freq = freq[freq["count"] >= 1]  # in CI, small dataset
 
-    print(f"[Prereq] Final edges: {len(freq)}")
+    print(f"[Prereq] Final edges: {len(freq):,}")
     return freq[["src", "dst"]]
 
 
-# ----------------------------------------------------
+# ==========================================
 # 5. Export everything for IKRAE pipeline
-# ----------------------------------------------------
+# ==========================================
 
-def export_online_ednet(sample_rows=None):
-    print("=== IKRAE EdNet Online Loader ===")
+def export_ednet(sample_rows=None):
+    print("=== IKRAE Local EdNet Loader ===")
 
     kt3 = load_kt3(sample_rows=sample_rows)
-    questions = load_questions()
-    lectures = load_lectures()
+    questions = build_questions_from_kt3(kt3)
 
     lo_df = build_learning_objects(kt3, questions)
     lo_df.to_csv(OUT / "learning_objects.csv", index=False)
@@ -164,12 +183,10 @@ def export_online_ednet(sample_rows=None):
     print("=== Done: EdNet extraction complete ===")
 
 
-# ----------------------------------------------------
+# ==========================================
 # Run directly
-# ----------------------------------------------------
+# ==========================================
 
 if __name__ == "__main__":
-    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
-        export_online_ednet(sample_rows=None)  # no sampling in CI
-    else:
-        export_online_ednet(sample_rows=500000)
+    # Keep sampling for local runs; CI uses tiny synthetic data anyway
+    export_ednet(sample_rows=500_000)

@@ -39,7 +39,10 @@ COPY . /app
 # Ensure results folder exists
 RUN mkdir -p experiments/results
 
-# Make the pipeline script executable
+# Ensure dataset is visible
+RUN ls -lh data || echo "⚠️ DATA FOLDER MISSING!"
+
+# Make pipeline script executable
 RUN chmod +x run_pipeline.sh
 
 # ---------------------------------------------------------

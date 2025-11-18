@@ -1,6 +1,7 @@
 IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning
 
-A Research Study by | Aziz Abdelkarim, Faddoul khoukhi and Kabba Fatima Ezzahra  
+A Research Study by | Aziz Abdelkarim, Faddoul khoukhi.
+Computer Science Lab, Faculty of sciences and technics, Mohammedia - Casablanca 
 Dataset: Real EdNet (131M interactions)  
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17464127.svg)](https://doi.org/10.5281/zenodo.17464127)
@@ -127,8 +128,36 @@ IKRAE/
 │   └── run_experiments.py
 │
 ├── experiments/
-│   ├── user_context.json
-│   └── results/
+│
+├── contexts/              # User context profiles
+│   ├── context_high_mastery.json
+│   ├── context_low_bandwidth.json
+│   ├── context_low_mastery.json
+│   └── user_context.json
+│
+├── figures/               # Paper figures (runtime, diversity, feasibility)
+│   ├── runtime_scalability.png
+│   ├── feasible_graph.pdf
+│   └── k_paths.pdf
+│
+├── graphs/                # Graph experiments
+│   ├── base_graph_200.pkl
+│   ├── base_graph_1000.pkl
+│   ├── base_graph_5000.pkl
+│   ├── base_graph_10000.pkl
+│   ├── base_graph_50000.pkl
+│   ├── base_graph_100000.pkl
+│   ├── generate_base_graph.py
+│   ├── Gf.pkl             # Final feasible graph used in the paper
+│   ├── pos.pkl            # Graph layout
+│   └── paths.pkl          # Primary + k alternative paths
+│
+├── notebooks/
+│   └── IKRAE_plots.ipynb  # Generate paper figures
+│
+└── results/
+    ├── learning_objects.csv    # Node metadata (semantic tags)
+    └── prerequisites.csv       # Edge list (prerequisites)
 │
 ├── ontology/                  # Optional: OWL + SWRL (Java/HermiT)
 │
