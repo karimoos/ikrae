@@ -37,3 +37,8 @@ lib/hermit/*.jar
 # Temp
 *.tmp
 temp/
+
+*.csv
+data/
+datasets/
+
