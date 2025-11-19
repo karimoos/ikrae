@@ -1,40 +1,52 @@
 """
 run_experiments.py
 ------------------
-Example experiment script for IKRAE:
+IKRAE Experiment Runner
 
-- Runs online EdNet loading
-- Runs semantic filter
-- Runs optimizer
-- Prints runtime and basic stats
+- Loads EdNet (local or auto-download) through ednet_loader.export_ednet()
+- Runs semantic filtering (OWL/SWRL → feasible learning objects)
+- Runs graph optimization (Dijkstra + k-shortest paths)
+- Saves results to experiments/results/
 """
 
-from pathlib import Path
 import time
-import json
+from pathlib import Path
 
-from ednet_loader import export_online_ednet
-from ikrae_reasoner import run_reasoner
-from ikrae_optimizer import run_optimizer
+from src.ednet_loader import export_ednet
+from src.ikrae_reasoner import run_reasoner
+from src.ikrae_optimizer import run_optimizer
+
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = ROOT / "experiments" / "results"
 
 
-def run_single_experiment(sample_users: int = 5000, k_paths: int = 3) -> None:
-    user_json = ROOT / "experiments" / "user_context.json"
+def run_single_experiment(sample_rows: int = 500_000, k_paths: int = 3) -> None:
+    """Runs the full IKRAE pipeline using local EdNet data."""
+
+    # Input/output paths
     lo_raw = RESULTS_DIR / "learning_objects.csv"
     lo_feasible = RESULTS_DIR / "learning_objects_feasible.csv"
     infeasible_json = RESULTS_DIR / "infeasible_los.json"
     edges_csv = RESULTS_DIR / "prerequisites.csv"
+    user_json = ROOT / "experiments" / "user_context.json"
     path_trace = RESULTS_DIR / "path_trace.json"
 
+    # 1) Load & export EdNet
     t0 = time.time()
-    export_online_ednet(sample_users=sample_users)
+    export_ednet(sample_rows=sample_rows)
     t1 = time.time()
-    run_reasoner(lo_csv=lo_raw, user_json=user_json,
-                 feasible_csv=lo_feasible, infeasible_json=infeasible_json)
+
+    # 2) Semantic filtering
+    run_reasoner(
+        lo_csv=lo_raw,
+        user_json=user_json,
+        feasible_csv=lo_feasible,
+        infeasible_json=infeasible_json,
+    )
     t2 = time.time()
+
+    # 3) Graph optimization + k-shortest paths
     explanation = run_optimizer(
         lo_csv=lo_feasible,
         edges_csv=edges_csv,
@@ -45,6 +57,7 @@ def run_single_experiment(sample_users: int = 5000, k_paths: int = 3) -> None:
     )
     t3 = time.time()
 
+    # Summary
     print("\n=== Experiment Summary ===")
     print(f"EdNet load + export: {1000*(t1 - t0):.1f} ms")
     print(f"Semantic reasoning:  {1000*(t2 - t1):.1f} ms")
@@ -54,4 +67,4 @@ def run_single_experiment(sample_users: int = 5000, k_paths: int = 3) -> None:
 
 
 if __name__ == "__main__":
-    run_single_experiment(sample_users=2000, k_paths=3)
+    run_single_experiment(sample_rows=500_000, k_paths=3)
