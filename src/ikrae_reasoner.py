@@ -10,7 +10,7 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # ----------------------------------------------------------
 # Helper: load user context file
 # ----------------------------------------------------------
-def load_user_context(path="experiments/user_context.json"):
+def load_user_context(path="experiments/contexts/user_context.json"):
     with open(path, "r") as f:
         return json.load(f)
 
