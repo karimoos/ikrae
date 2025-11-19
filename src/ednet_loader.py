@@ -118,14 +118,17 @@ def build_questions_from_kt3(kt3_df):
 def build_learning_objects(kt3_df, questions_df):
     print("[Build] Constructing learning objects...")
 
+    # Determine ID source
     qid_src = "question_id" if "question_id" in kt3_df.columns else "item_id"
 
+    # Detect duration column
     time_col = None
     for cand in ["elapsed_time", "duration", "time_ms"]:
         if cand in kt3_df.columns:
             time_col = cand
             break
 
+    # Detect correct answer and user answer columns
     correct_col = None
     if "correct_answer" in kt3_df.columns:
         correct_col = "correct_answer"
@@ -134,13 +137,44 @@ def build_learning_objects(kt3_df, questions_df):
 
     user_col = "user_answer" if "user_answer" in kt3_df.columns else None
 
+    # Duration aggregation
     def duration_agg(x):
         if time_col is None:
-            return 1.0
-        return x.mean() / 60000.0
+            return 1.0  # fallback: assume 1 minute
+        return x.mean() / 60000.0  # convert ms → minutes
 
+    # Accuracy aggregation
     def accuracy_agg(s):
+        # If both correct + user_answer columns exist
         if correct_col and user_col and correct_col in kt3_df.columns and user_col in kt3_df.columns:
             return (kt3_df.loc[s.index, user_col] == kt3_df.loc[s.index, correct_col]).mean()
-        if correct_col in kt3_df.columns:
-            return kt3_df.loc[s.index, correc]()_
+
+        # If only correct answer exists
+        if correct_col and correct_col in kt3_df.columns:
+            return kt3_df.loc[s.index, correct_col].mean()
+
+        # fallback default
+        return 0.7
+
+    # Group by LO and compute stats
+    stats = kt3_df.groupby(qid_src).agg(
+        duration_min=(time_col if time_col else qid_src, duration_agg),
+        accuracy=(qid_src, accuracy_agg),
+    ).reset_index().rename(columns={qid_src: "lo_id"})
+
+    # Merge minimal question info
+    questions_df = questions_df.rename(columns={"question_id": "lo_id"})
+    lo = questions_df.merge(stats, on="lo_id", how="left")
+
+    # Handle missing values
+    lo["duration_min"] = lo["duration_min"].fillna(lo["duration_min"].median())
+    lo["accuracy"] = lo["accuracy"].fillna(0.5)
+
+    # Additional metadata
+    lo["type"] = "question"
+    lo["language"] = "en"
+    lo["requires_mastery"] = np.clip(1 - lo["accuracy"], 0.0, 1.0)
+    lo["pedagogical_weight"] = 1 - lo["accuracy"]
+
+    print(f"[Build] Learning objects: {len(lo):,}")
+    return lo
