@@ -5,7 +5,7 @@ echo "======================================"
 echo "        IKRAE FULL PIPELINE           "
 echo "======================================"
 
-# 1/3: Build learning_objects.csv + prerequisites.csv from local KT3 zip
+# 1/3: Build learning_objects.csv + prerequisites.csv from KT3
 echo "[1/3] Loading EdNet and building LO tables..."
 python3 -m src.ednet_loader
 
