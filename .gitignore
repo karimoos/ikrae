@@ -1,55 +1,23 @@
-###############################################
-# EXPERIMENTS
-###############################################
-experiments/results/*
-!experiments/results/.gitkeep
-
-###############################################
-# PYTHON
-###############################################
-*.pyc
+# Python
 __pycache__/
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
+*.pyc
 
-###############################################
-# LOGS
-###############################################
-*.log
-logs/
-
-###############################################
-# OS
-###############################################
-.DS_Store
-Thumbs.db
-
-###############################################
-# IDE / EDITORS
-###############################################
-.vscode/
-.idea/
-*.swp
-*.swo
-
-###############################################
-# JAVA / JARS
-###############################################
-lib/hermit/*.jar
-!lib/hermit/HermiT.jar
-
-###############################################
-# TEMP
-###############################################
-*.tmp
-temp/
-
-*.csv
+# Data protection
+data/*.zip
+data/*.csv
+data/*.txt
 data/*
-!data/ikrae_kt3_clean.zip
-datasets/
 
+experiments/results/*
+experiments/graphs/*
+
+# OS files
+.DS_Store
+
+# Virtual env
+venv/
+env/
+
+# PyCharm / VSCode
+.idea/
+.vscode/
