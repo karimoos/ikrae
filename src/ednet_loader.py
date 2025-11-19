@@ -9,14 +9,14 @@ from pathlib import Path
 # ==========================================
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT  / "data"
+DATA_DIR = ROOT / "data"
 DATA_ZIP = DATA_DIR / "ikrae_kt3_clean.zip"
 OUT = ROOT / "experiments" / "results"
 OUT.mkdir(parents=True, exist_ok=True)
 
 CI_MODE = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
 
-# Google Drive file ID for KT3
+# Google Drive file ID for KT3 file
 GDRIVE_ID = "1uyVS796ulJTfND1Oz0yJgjRwj6wKsksh"
 GDRIVE_URL = f"https://drive.google.com/uc?id={GDRIVE_ID}"
 
@@ -26,39 +26,38 @@ GDRIVE_URL = f"https://drive.google.com/uc?id={GDRIVE_ID}"
 # ==========================================
 
 def download_kt3_zip():
-    """Download the KT3 zip from Google Drive into data/ folder."""
-    print("[Download] KT3 zip not found. Downloading from Google Drive...")
+    """Download the KT3 zip from Google Drive."""
+    print("[Download] KT3 dataset missing. Downloading from Google Drive...")
 
     try:
         import gdown
     except ImportError:
-        raise ImportError("Missing dependency: gdown. Add 'gdown' to requirements.txt")
+        raise ImportError("Missing dependency: gdown. Add `gdown` to requirements.txt")
 
     DATA_DIR.mkdir(exist_ok=True)
     gdown.download(GDRIVE_URL, str(DATA_ZIP), quiet=False)
-    print(f"[Download] Saved to {DATA_ZIP}")
+
+    print(f"[Download] Saved to: {DATA_ZIP}")
 
 
 def extract_zip():
-    """Extract KT3 zip."""
-    print("[Extract] Extracting KT3 dataset...")
+    """Extract KT3 zip into /data."""
+    print("[Extract] Extracting KT3 zip...")
     with zipfile.ZipFile(DATA_ZIP, "r") as z:
         z.extractall(DATA_DIR)
-    print("[Extract] Done.")
+    print("[Extract] Extraction complete.")
 
 
 # ==========================================
-# 1. Load KT3 (Local or CI)
+# 1. Load KT3 dataset
 # ==========================================
 
 def load_kt3(sample_rows=None):
-    """Load KT3 interactions.
+    """Load KT3 interactions (local zip or CI dummy)."""
 
-    - In CI: use small synthetic dataset.
-    - Locally: auto-download + extract from Google Drive if missing.
-    """
+    # CI environment uses dummy tiny dataset
     if CI_MODE:
-        print("[CI MODE] Using tiny synthetic KT3 dataset")
+        print("[CI MODE] Using tiny KT3 synthetic dataset")
         df = pd.DataFrame({
             "user_id":   [1, 1, 2, 2],
             "timestamp": [1000, 2000, 1000, 3000],
@@ -72,63 +71,60 @@ def load_kt3(sample_rows=None):
         download_kt3_zip()
         extract_zip()
 
-    # Load from ZIP
+    # Load CSV inside zip
     print(f"[Local ZIP] Loading KT3 from {DATA_ZIP}")
     with zipfile.ZipFile(DATA_ZIP, "r") as z:
-        csv_names = [n for n in z.namelist() if n.lower().endswith(".csv")]
-        if not csv_names:
-            raise RuntimeError("No CSV found inside ikrae_kt3_clean.zip")
-
-        csv_name = csv_names[0]
-        print(f"[Local ZIP] Using internal file: {csv_name}")
+        csv_files = [n for n in z.namelist() if n.lower().endswith(".csv")]
+        assert csv_files, "ERROR: ZIP contains no CSV file!"
+        csv_name = csv_files[0]
+        print(f"[Local ZIP] Using CSV: {csv_name}")
         df = pd.read_csv(z.open(csv_name))
 
     # Optional sampling
     if sample_rows and len(df) > sample_rows:
         df = df.sample(sample_rows, random_state=42)
-        print(f"[KT3] Sampled {len(df):,} rows")
+        print(f"[KT3] Sampled to: {len(df):,} rows")
 
-    print(f"[KT3] Loaded {len(df):,} rows")
+    print(f"[KT3] Loaded total rows: {len(df):,}")
     return df
 
 
 # ==========================================
-# 2. Minimal questions table
+# 2. Build minimal questions table
 # ==========================================
 
 def build_questions_from_kt3(kt3_df):
-    print("[Questions] Building minimal questions table from KT3")
+    print("[Questions] Building questions table")
 
     qid_col = "question_id" if "question_id" in kt3_df.columns else "item_id"
-    unique_ids = kt3_df[qid_col].astype(str).unique()
+    question_ids = kt3_df[qid_col].astype(str).unique()
 
-    questions = pd.DataFrame({
-        "question_id": unique_ids,
-        "tags": [["generic"]] * len(unique_ids)
+    df = pd.DataFrame({
+        "question_id": question_ids,
+        "tags": [["generic"]] * len(question_ids)
     })
 
-    print(f"[Questions] Created {len(questions):,} rows")
-    return questions
+    print(f"[Questions] Total questions: {len(df):,}")
+    return df
 
 
 # ==========================================
-# 3. Build learning objects table
+# 3. Build Learning Objects (LO table)
 # ==========================================
 
 def build_learning_objects(kt3_df, questions_df):
-    print("[Build] Constructing learning objects...")
+    print("[Build] Constructing Learning Objects...")
 
-    # Determine ID source
     qid_src = "question_id" if "question_id" in kt3_df.columns else "item_id"
 
-    # Detect duration column
+    # Duration column guess
     time_col = None
-    for cand in ["elapsed_time", "duration", "time_ms"]:
-        if cand in kt3_df.columns:
-            time_col = cand
+    for c in ["elapsed_time", "duration", "time_ms"]:
+        if c in kt3_df.columns:
+            time_col = c
             break
 
-    # Detect correct answer and user answer columns
+    # Accuracy columns
     correct_col = None
     if "correct_answer" in kt3_df.columns:
         correct_col = "correct_answer"
@@ -137,44 +133,85 @@ def build_learning_objects(kt3_df, questions_df):
 
     user_col = "user_answer" if "user_answer" in kt3_df.columns else None
 
-    # Duration aggregation
+    # Aggregations
     def duration_agg(x):
-        if time_col is None:
-            return 1.0  # fallback: assume 1 minute
-        return x.mean() / 60000.0  # convert ms → minutes
+        if time_col:
+            return x.mean() / 60000.0
+        return 1.0  # fallback
 
-    # Accuracy aggregation
     def accuracy_agg(s):
-        # If both correct + user_answer columns exist
-        if correct_col and user_col and correct_col in kt3_df.columns and user_col in kt3_df.columns:
-            return (kt3_df.loc[s.index, user_col] == kt3_df.loc[s.index, correct_col]).mean()
+        if correct_col and user_col:
+            return (kt3_df.loc[s.index, user_col] ==
+                    kt3_df.loc[s.index, correct_col]).mean()
+        return 0.7  # fallback
 
-        # If only correct answer exists
-        if correct_col and correct_col in kt3_df.columns:
-            return kt3_df.loc[s.index, correct_col].mean()
-
-        # fallback default
-        return 0.7
-
-    # Group by LO and compute stats
     stats = kt3_df.groupby(qid_src).agg(
         duration_min=(time_col if time_col else qid_src, duration_agg),
         accuracy=(qid_src, accuracy_agg),
     ).reset_index().rename(columns={qid_src: "lo_id"})
 
-    # Merge minimal question info
-    questions_df = questions_df.rename(columns={"question_id": "lo_id"})
-    lo = questions_df.merge(stats, on="lo_id", how="left")
+    # Merge with minimal question table
+    q_copy = questions_df.rename(columns={"question_id": "lo_id"})
+    lo = q_copy.merge(stats, on="lo_id", how="left")
 
-    # Handle missing values
+    # Fill missing values
     lo["duration_min"] = lo["duration_min"].fillna(lo["duration_min"].median())
     lo["accuracy"] = lo["accuracy"].fillna(0.5)
 
-    # Additional metadata
     lo["type"] = "question"
     lo["language"] = "en"
     lo["requires_mastery"] = np.clip(1 - lo["accuracy"], 0.0, 1.0)
     lo["pedagogical_weight"] = 1 - lo["accuracy"]
 
-    print(f"[Build] Learning objects: {len(lo):,}")
+    print(f"[Build] Final LO count: {len(lo):,}")
     return lo
+
+
+# ==========================================
+# 4. Build REAL prerequisite edges
+# ==========================================
+
+def build_prerequisite_edges_real(kt3_df):
+    print("[Prereq] Building prerequisite graph...")
+
+    qid_col = "question_id" if "question_id" in kt3_df.columns else "item_id"
+
+    kt3_df = kt3_df.sort_values(["user_id", "timestamp"])
+
+    transitions = []
+    for uid, group in kt3_df.groupby("user_id"):
+        seq = group[qid_col].astype(str).tolist()
+        for i in range(len(seq) - 1):
+            transitions.append((seq[i], seq[i + 1]))
+
+    df = pd.DataFrame(transitions, columns=["src", "dst"])
+    freq = df.groupby(["src", "dst"]).size().reset_index(name="count")
+
+    print(f"[Prereq] Total edges: {len(freq):,}")
+    return freq[["src", "dst"]]
+
+
+# ==========================================
+# 5. EXPORT FUNCTION (CALLED BY PIPELINE)
+# ==========================================
+
+def export_ednet(sample_rows=None):
+    """Main entry point to generate:
+    - learning_objects.csv
+    - prerequisites.csv
+    """
+
+    print("=== IKRAE Local EdNet Loader ===")
+
+    kt3 = load_kt3(sample_rows=sample_rows)
+    questions = build_questions_from_kt3(kt3)
+
+    lo_df = build_learning_objects(kt3, questions)
+    lo_df.to_csv(OUT / "learning_objects.csv", index=False)
+    print("[Save] learning_objects.csv")
+
+    edges_df = build_prerequisite_edges_real(kt3)
+    edges_df.to_csv(OUT / "prerequisites.csv", index=False)
+    print("[Save] prerequisites.csv")
+
+    print("=== EdNet export complete ===")
