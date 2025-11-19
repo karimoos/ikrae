@@ -49,6 +49,7 @@ lib/hermit/*.jar
 temp/
 
 *.csv
-data/
+data/*
+!data/ikrae_kt3_clean.zip
 datasets/
 
