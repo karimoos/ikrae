@@ -1,3 +1,0 @@
-mkdir -p lib/hermit
-cd lib/hermit
-wget http://hermit-reasoner.com/HermiT.jar
