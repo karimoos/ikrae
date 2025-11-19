@@ -9,7 +9,7 @@ from pathlib import Path
 # ==========================================
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT  / "datasets"
+DATA_DIR = ROOT  / "data"
 DATA_ZIP = DATA_DIR / "ikrae_kt3_clean.zip"
 OUT = ROOT / "experiments" / "results"
 OUT.mkdir(parents=True, exist_ok=True)
