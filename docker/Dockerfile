@@ -4,7 +4,7 @@
 FROM python:3.10-bullseye
 
 LABEL maintainer="Aziz Abdelkarim <a.karim.linux@gmail.com>"
-LABEL description="Docker image for IKRAE-EdNet: Semantic + Graph-based Adaptive Learning Framework"
+LABEL description="IKRAE-EdNet: Semantic + Graph-based Adaptive Learning Framework"
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
@@ -23,26 +23,31 @@ RUN apt-get update && \
         pkg-config \
         libfreetype6-dev \
         libpng-dev \
-        libjpeg-dev && \
+        libjpeg-dev \
+        libblas-dev \
+        liblapack-dev \
+        graphviz \
+        fonts-dejavu-core && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Java setup
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
 
 # ---------------------------------------------------------
-#  Application Setup
+#  App Workspace
 # ---------------------------------------------------------
 WORKDIR /app
 COPY . /app
 
-# Ensure results folder exists
+# Create results directory
 RUN mkdir -p experiments/results
 
-# Ensure dataset is visible
-RUN ls -lh data || echo "⚠️ DATA FOLDER MISSING!"
+# Print data folder content (debug help)
+RUN ls -lh data || echo "⚠ DATA folder does not exist yet — will be downloaded automatically."
 
-# Make pipeline script executable
+# Pipeline script
 RUN chmod +x run_pipeline.sh
 
 # ---------------------------------------------------------
@@ -51,7 +56,7 @@ RUN chmod +x run_pipeline.sh
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
-# Debug info
+# Versions check
 RUN java -version && python3 --version
 
 # ---------------------------------------------------------
