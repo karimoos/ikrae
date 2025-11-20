@@ -1,6 +1,5 @@
 pandas
 numpy
-gdown
 networkx
 matplotlib
 tqdm
