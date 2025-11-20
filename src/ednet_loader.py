@@ -3,6 +3,7 @@ import numpy as np
 import zipfile
 import os
 from pathlib import Path
+import urllib.request
 
 # ==========================================
 # CONFIG
@@ -16,9 +17,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 CI_MODE = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
 
-# Google Drive file ID for KT3 file
-GDRIVE_ID = "1uyVS796ulJTfND1Oz0yJgjRwj6wKsksh"
-GDRIVE_URL = f"https://drive.google.com/uc?id={GDRIVE_ID}"
+# Zenodo permanent dataset link
+ZENODO_URL = "https://zenodo.org/record/17664110/files/ikrae_kt3_clean.zip?download=1"
 
 
 # ==========================================
@@ -26,16 +26,15 @@ GDRIVE_URL = f"https://drive.google.com/uc?id={GDRIVE_ID}"
 # ==========================================
 
 def download_kt3_zip():
-    """Download the KT3 zip from Google Drive."""
-    print("[Download] KT3 dataset missing. Downloading from Google Drive...")
-
-    try:
-        import gdown
-    except ImportError:
-        raise ImportError("Missing dependency: gdown. Add `gdown` to requirements.txt")
+    """Download the KT3 zip from Zenodo."""
+    print("[Download] KT3 dataset missing. Downloading from Zenodo...")
 
     DATA_DIR.mkdir(exist_ok=True)
-    gdown.download(GDRIVE_URL, str(DATA_ZIP), quiet=False)
+
+    try:
+        urllib.request.urlretrieve(ZENODO_URL, DATA_ZIP)
+    except Exception as e:
+        raise RuntimeError(f"Failed to download KT3 dataset from Zenodo: {e}")
 
     print(f"[Download] Saved to: {DATA_ZIP}")
 
@@ -55,7 +54,6 @@ def extract_zip():
 def load_kt3(sample_rows=None):
     """Load KT3 interactions (local zip or CI dummy)."""
 
-    # CI environment uses dummy tiny dataset
     if CI_MODE:
         print("[CI MODE] Using tiny KT3 synthetic dataset")
         df = pd.DataFrame({
@@ -71,7 +69,6 @@ def load_kt3(sample_rows=None):
         download_kt3_zip()
         extract_zip()
 
-    # Load CSV inside zip
     print(f"[Local ZIP] Loading KT3 from {DATA_ZIP}")
     with zipfile.ZipFile(DATA_ZIP, "r") as z:
         csv_files = [n for n in z.namelist() if n.lower().endswith(".csv")]
@@ -80,7 +77,6 @@ def load_kt3(sample_rows=None):
         print(f"[Local ZIP] Using CSV: {csv_name}")
         df = pd.read_csv(z.open(csv_name))
 
-    # Optional sampling
     if sample_rows and len(df) > sample_rows:
         df = df.sample(sample_rows, random_state=42)
         print(f"[KT3] Sampled to: {len(df):,} rows")
@@ -136,14 +132,14 @@ def build_learning_objects(kt3_df, questions_df):
     # Aggregations
     def duration_agg(x):
         if time_col:
-            return x.mean() / 60000.0
-        return 1.0  # fallback
+            return x.mean() / 60000.0  # convert ms → minutes
+        return 1.0  # fallback default
 
     def accuracy_agg(s):
         if correct_col and user_col:
             return (kt3_df.loc[s.index, user_col] ==
                     kt3_df.loc[s.index, correct_col]).mean()
-        return 0.7  # fallback
+        return 0.7  # fallback baseline
 
     stats = kt3_df.groupby(qid_src).agg(
         duration_min=(time_col if time_col else qid_src, duration_agg),
