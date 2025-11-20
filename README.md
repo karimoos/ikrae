@@ -33,7 +33,23 @@ This repository includes:
 - Optional Java/HermiT reasoner for OWL + SWRL
 
 ---
+## 📦 Dataset
 
+This project uses the **IKRAE Clean EdNet KT3 Dataset**, openly available on Zenodo:
+
+**🔗 DOI:** https://doi.org/10.5281/zenodo.17664110  
+
+The dataset is a cleaned, deduplicated, and preprocessed version of the EdNet-KT3 interaction logs, prepared specifically for the IKRAE adaptive learning framework.
+
+To use it:
+
+```bash
+mkdir -p data/
+wget https://zenodo.org/record/17664110/files/ikrae_kt3_clean.zip
+unzip ikrae_kt3_clean.zip -d data/
+
+---
+```
  🧪 Reproducibility Statement
 
 > All experiments in the paper are 100% reproducible using this repository.**  
