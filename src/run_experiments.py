@@ -29,7 +29,7 @@ def run_single_experiment(sample_rows: int = 500_000, k_paths: int = 3) -> None:
     lo_feasible = RESULTS_DIR / "learning_objects_feasible.csv"
     infeasible_json = RESULTS_DIR / "infeasible_los.json"
     edges_csv = RESULTS_DIR / "prerequisites.csv"
-    user_json = ROOT / "experiments" / "user_context.json"
+    user_json = ROOT / "experiments" / "contexts"  / "user_context.json"
     path_trace = RESULTS_DIR / "path_trace.json"
 
     # 1) Load & export EdNet
