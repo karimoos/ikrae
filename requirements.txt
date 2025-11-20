@@ -1,7 +1,34 @@
-pandas
-numpy
-networkx
-matplotlib
-tqdm
-owlready2
-rdflib
+# Core data processing
+pandas>=2.0
+numpy>=1.23
+
+# Progress bars
+tqdm>=4.65
+
+# Graph algorithms (Dijkstra, k-shortest paths)
+networkx>=3.1
+
+# Optimization helpers (optional but used in many pipelines)
+scipy>=1.10
+
+# RDF / OWL / Semantic reasoning
+owlready2>=0.46
+rdflib>=7.0.0
+
+# Python-Java bridge
+jpype1>=1.4.1
+
+# Plotting (for figures, notebooks)
+matplotlib>=3.6
+
+# Parallel execution / scaling 
+dask[dataframe]>=2023.4.1
+
+# YAML config support
+pyyaml>=6.0
+
+# JSON schema validation
+jsonschema>=4.17
+
+# For reproducibility
+pyarrow>=14.0
