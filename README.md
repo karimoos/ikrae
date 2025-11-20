@@ -1,7 +1,8 @@
 IKRAE: A Unified Semantic and Graph-Based Optimization Framework for Scalable and Transparent Adaptive Learning
 
 A Research Study by | Aziz Abdelkarim, Faddoul khoukhi and Kabba Fatima Ezzahra.
-Computer Science Lab, Faculty of sciences and technics, Mohammedia - Casablanca 
+Computer Science Lab, Faculty of sciences and technics, Mohammedia - Casablanca. 
+
 Dataset: Real EdNet (131M interactions)  
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17464127.svg)](https://doi.org/10.5281/zenodo.17464127)
